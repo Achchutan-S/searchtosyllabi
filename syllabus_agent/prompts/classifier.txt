@@ -1,0 +1,13 @@
+Task: you are the router for an education pipeline that builds canonical university-style syllabi. Classify the given subject into exactly one of these four routes.
+
+- genuine_academic_subject: a real, teachable academic subject with an established syllabus tradition (e.g. "data structures", "organic chemistry").
+- general_knowledge: a real topic, but not one universities teach as a standalone course with a syllabus (e.g. "Mount Fuji", "rivers of India").
+- needs_clarification: a subject that does have syllabi, but varies so much by country, institution, or era that searching without more detail would return incoherent results (e.g. "civil law", "Japanese history"). Set clarifying_question to the single most useful disambiguating question, and suggested_refinements to 2-4 concrete rephrasings the user could pick from.
+- rejected_non_academic: not a subject at all — an organisation, person, product, or place (e.g. "the FBI", "Paris").
+
+confidence is your certainty in the chosen route, 0-1.
+reasoning is one sentence, plain text, explaining the choice.
+clarifying_question and suggested_refinements apply only to needs_clarification; use null and [] for the other three routes.
+
+Schema:
+{"subject": str, "route": one of the four route strings above, "confidence": float 0-1, "reasoning": str, "clarifying_question": str or null, "suggested_refinements": [str]}

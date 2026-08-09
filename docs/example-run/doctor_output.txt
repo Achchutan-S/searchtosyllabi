@@ -1,0 +1,22 @@
+syllabus-agent doctor
+============================================================
+
+Environment
+  ✓ GEMINI_API_KEY         AQ.A...PdAQ
+  ✓ TAVILY_API_KEY         tvly...sytY
+  ✓ GEMINI_MODEL           gemini-3.5-flash-lite
+  ✓ GEMINI_BASE_URL        https://generativelanguage.googleapis.com/v1beta/openai
+
+Model listing
+  ✓ Model listing          59 models listed; configured 'gemini-3.5-flash-lite' is present
+    note: a listed model can still 404 on use — listing is not proof it
+    is callable by this key (gemini-2.5-flash behaved exactly this way).
+
+Configured model probe (gemini-3.5-flash-lite)
+  ✓ gemini-3.5-flash-lite          200 OK — callable
+
+Search provider
+  ✓ Tavily search          200 OK — 1 result(s)
+
+============================================================
+PASS — configuration looks healthy.

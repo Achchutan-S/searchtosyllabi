@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>syllabus-agent — captured run: data structures</title>
+<style>
+  :root {
+    --bg: #fbfbfa; --panel: #fff; --ink: #1a1a18; --muted: #6b6b66;
+    --line: #e3e2dd; --accent: #2f5d50; --accent-soft: #eef3f1;
+    --warn: #8a5a00; --warn-soft: #fdf5e6; --dim: #f6f6f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15161a; --panel: #1c1e23; --ink: #e8e8e6; --muted: #9a9a94;
+      --line: #2e3138; --accent: #7fc0ac; --accent-soft: #1e2a27;
+      --warn: #e0b160; --warn-soft: #2a2318; --dim: #212429;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 1.9rem; margin: 0 0 6px; letter-spacing: -0.02em; }
+  h2 { font-size: 1.15rem; margin: 44px 0 14px; padding-bottom: 8px; border-bottom: 2px solid var(--line); letter-spacing: -0.01em; }
+  h3 { font-size: 1rem; margin: 0 0 8px; }
+  p { margin: 0 0 12px; }
+  a { color: var(--accent); }
+  .sub { color: var(--muted); margin-bottom: 22px; }
+  .note {
+    background: var(--warn-soft); border-left: 3px solid var(--warn);
+    padding: 14px 16px; border-radius: 0 6px 6px 0; margin: 0 0 28px; font-size: 0.93rem;
+  }
+  .note strong { color: var(--warn); }
+  .cards { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 18px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px 16px; min-width: 116px; flex: 1 1 116px;
+  }
+  .card .n { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; }
+  .card .l { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+  th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; white-space: nowrap; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.strong { font-weight: 650; }
+  td.pen { color: var(--warn); }
+  td.url { max-width: 430px; word-break: break-all; }
+  tr.used { background: var(--accent-soft); }
+  .used-yes { color: var(--accent); font-weight: 650; }
+  .used-no { color: var(--muted); }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; background: var(--muted); }
+  .v-direct_match .dot { background: #3f8f6f; }
+  .v-partial_match .dot { background: #b8912f; }
+  .v-field_level .dot { background: #9a6b4f; }
+  .v-unrelated .dot { background: #a04b4b; }
+  .muted { color: var(--muted); }
+  .unit { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px 20px; margin-bottom: 12px; }
+  .unit .count { float: right; color: var(--muted); font-size: 0.78rem; font-weight: 400; }
+  .unit ol { margin: 0; padding-left: 22px; }
+  .unit li { margin: 3px 0; }
+  .prov { color: var(--muted); font-size: 0.76rem; margin-left: 8px; }
+  blockquote {
+    margin: 0; padding: 16px 20px; background: var(--panel);
+    border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; font-size: 0.94rem;
+  }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .two { grid-template-columns: 1fr; } }
+  .two ul { margin: 0; padding-left: 20px; font-size: 0.86rem; word-break: break-all; }
+  .two li { margin: 5px 0; }
+  .files { font-size: 0.9rem; }
+  .files code { background: var(--dim); padding: 2px 6px; border-radius: 4px; }
+  footer { margin-top: 50px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>syllabus-agent — captured run</h1>
+  <p class="sub">Subject <strong>“data structures”</strong> · generated 2026-08-09T10:46:14.585087Z · model <code>gemini-3.5-flash-lite</code></p>
+
+  <div class="note">
+    <strong>This is a captured real run, not a live demo.</strong> Every number and
+    URL below came from one actual execution against live Gemini and Tavily APIs —
+    nothing here is mocked or hand-written. It is a static report precisely because
+    the pipeline is not reliable enough to demo live: see
+    <a href="../../README.md#current-state--known-issues">Current State &amp; Known Issues</a>
+    in the README for what is fragile and why this isn’t a clickable interface.
+  </div>
+
+  <h2>Classification</h2>
+  <div class="panel">
+    <p style="margin:0 0 6px"><strong>Route:</strong> <code>genuine_academic_subject</code>
+       &nbsp;·&nbsp; <strong>Confidence:</strong> 1.0</p>
+    <p style="margin:0" class="muted">“Data structures is a foundational and universally taught course in computer science curricula worldwide.”</p>
+  </div>
+
+  <h2>Run at a glance</h2>
+  <div class="cards">
+    <div class="card"><div class="n">32</div><div class="l">sources collected</div></div>
+    <div class="card"><div class="n">27</div><div class="l">extracted ok</div></div>
+    <div class="card"><div class="n">9</div><div class="l">passed relevance</div></div>
+    <div class="card"><div class="n">4</div><div class="l">structured</div></div>
+    <div class="card"><div class="n">5</div><div class="l">final units</div></div>
+    <div class="card"><div class="n">15</div><div class="l">final topics</div></div>
+    <div class="card"><div class="n">42</div><div class="l">LLM calls</div></div>
+    <div class="card"><div class="n">6</div><div class="l">searches</div></div>
+  </div>
+
+  <h2>Trust ranking</h2>
+  <p class="muted" style="font-size:0.92rem">
+    Sources are ranked by a blend of <strong>domain reputation</strong> (is it a
+    university or known OCW platform?) and <strong>content richness</strong> (a local,
+    no-API heuristic asking whether the extracted text actually looks like a syllabus).
+    Reputation alone had proved misleading — <code>ocw.mit.edu</code> course-<em>admin</em>
+    pages score 0.95 on domain while carrying no curriculum at all. Highlighted rows
+    were structured.
+  </p>
+  <p class="muted" style="font-size:0.92rem">
+    <strong>What this particular run shows, honestly:</strong> the blend is doing real
+    work — rank 1 wins on content (0.477) despite an ordinary 0.80 domain — but it is
+    not a clean win. Rank 4 is an <code>ocw.mit.edu</code> lecture-<em>video</em> listing
+    with a content score of just 0.083 and 2,507 characters of text; its 0.95 domain
+    score still carried it into a structuring slot. Meanwhile rank 7 (Rutgers) has the
+    highest content score of any unused source (0.455) and 14,979 characters, and was
+    pushed below thinner sources by the ×0.7 partial-match demotion. Reputation still
+    outweighs content more than it should at the margin.
+  </p>
+  <div class="panel scroll">
+    <table>
+      <thead><tr>
+        <th>#</th><th>Source</th><th>Domain</th><th>Content</th>
+        <th>Relevance</th><th>Blended</th><th>Chars</th><th>Used</th>
+      </tr></thead>
+      <tbody>
+      <tr class="used">
+        <td class="num">1</td>
+        <td class="url"><a href="https://www.cs.iastate.edu/courses/com-s-2280">https://www.cs.iastate.edu/courses/com-s-2280</a></td>
+        <td class="num">0.80</td>
+        <td class="num">0.477</td>
+        <td class="num pen">—</td>
+        <td class="num strong">0.638</td>
+        <td class="num">5,619</td>
+        <td class="used-yes">yes</td>
+      </tr>
+      <tr class="used">
+        <td class="num">2</td>
+        <td class="url"><a href="https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_CS_146_Spring_2023.pdf">https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorith…</a></td>
+        <td class="num">0.80</td>
+        <td class="num">0.450</td>
+        <td class="num pen">—</td>
+        <td class="num strong">0.625</td>
+        <td class="num">7,140</td>
+        <td class="used-yes">yes</td>
+      </tr>
+      <tr class="used">
+        <td class="num">3</td>
+        <td class="url"><a href="https://snow.edu/academics/science_math/engineering/cs/syllabus.html?q=5760">https://snow.edu/academics/science_math/engineering/cs/syllabus.html?q=5760</a></td>
+        <td class="num">0.80</td>
+        <td class="num">0.264</td>
+        <td class="num pen">—</td>
+        <td class="num strong">0.532</td>
+        <td class="num">3,273</td>
+        <td class="used-yes">yes</td>
+      </tr>
+      <tr class="used">
+        <td class="num">4</td>
+        <td class="url"><a href="https://ocw.mit.edu/courses/6-851-advanced-data-structures-spring-2012/resources/lecture-videos">https://ocw.mit.edu/courses/6-851-advanced-data-structures-spring-2012/resour…</a></td>
+        <td class="num">0.95</td>
+        <td class="num">0.083</td>
+        <td class="num pen">—</td>
+        <td class="num strong">0.516</td>
+        <td class="num">2,507</td>
+        <td class="used-yes">yes</td>
+      </tr>
+      <tr class="unused">
+        <td class="num">5</td>
+        <td class="url"><a href="https://www.subr.edu/assets/subr/ComputerScience/CMPS201_Syllabus.pdf">https://www.subr.edu/assets/subr/ComputerScience/CMPS201_Syllabus.pdf</a></td>
+        <td class="num">0.80</td>
+        <td class="num">0.227</td>
+        <td class="num pen">—</td>
+        <td class="num strong">0.513</td>
+        <td class="num">5,476</td>
+        <td class="used-no">no</td>
+      </tr>
+      <tr class="unused">
+        <td class="num">6</td>
+        <td class="url"><a href="https://miamioh.edu/cec/departments/computer-science-software-engineering/academics/course-descriptions/cse-courses/cse-274.html">https://miamioh.edu/cec/departments/computer-science-software-engineering/aca…</a></td>
+        <td class="num">0.80</td>
+        <td class="num">0.226</td>
+        <td class="num pen">—</td>
+        <td class="num strong">0.513</td>
+        <td class="num">4,619</td>
+        <td class="used-no">no</td>
+      </tr>
+      <tr class="unused">
+        <td class="num">7</td>
+        <td class="url"><a href="https://ds.cs.rutgers.edu/">https://ds.cs.rutgers.edu/</a></td>
+        <td class="num">0.80</td>
+        <td class="num">0.455</td>
+        <td class="num pen">×0.7</td>
+        <td class="num strong">0.507</td>
+        <td class="num">14,979</td>
+        <td class="used-no">no</td>
+      </tr>
+      <tr class="unused">
+        <td class="num">8</td>
+        <td class="url"><a href="https://archive.nptel.ac.in/content/syllabus_pdf/106106127.pdf">https://archive.nptel.ac.in/content/syllabus_pdf/106106127.pdf</a></td>
+        <td class="num">0.80</td>
+        <td class="num">0.125</td>
+        <td class="num pen">—</td>
+        <td class="num strong">0.463</td>
+        <td class="num">2,181</td>
+        <td class="used-no">no</td>
+      </tr>
+      <tr class="unused">
+        <td class="num">9</td>
+        <td class="url"><a href="https://www.mccormick.northwestern.edu/computer-science/academics/courses/descriptions/208.html">https://www.mccormick.northwestern.edu/computer-science/academics/courses/des…</a></td>
+        <td class="num">0.80</td>
+        <td class="num">0.021</td>
+        <td class="num pen">—</td>
+        <td class="num strong">0.410</td>
+        <td class="num">1,068</td>
+        <td class="used-no">no</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted" style="font-size:0.86rem; margin-top:10px">
+    The <em>Relevance</em> column shows the partial-match demotion (×0.7). It applies
+    to ranking only — the merge step is told the source’s unpenalised trust, so a
+    partial match can still contribute topics.
+  </p>
+
+  <h2>Extraction</h2>
+  <div class="two">
+    <div class="panel">
+      <h3>Outcome</h3>
+      <table>
+        <tr><td>Attempted</td><td class="num">32</td></tr>
+        <tr><td>Produced text</td><td class="num">27</td></tr>
+        <tr><td>Failed</td><td class="num">5</td></tr>
+      </table>
+    </div>
+    <div class="panel">
+      <h3>Method used</h3>
+      <table>
+      <tr><td>HTML (BeautifulSoup)</td><td class='num'>19</td></tr>
+      <tr><td>PDF text (PyMuPDF)</td><td class='num'>8</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h2>Relevance filter</h2>
+  <p class="muted" style="font-size:0.92rem">
+    One LLM call per extracted source asks whether the document is about
+    <em>this course</em> or merely about the field. This is what stops a university’s
+    full CS degree catalog — long, credit-bearing and superficially syllabus-shaped —
+    from contributing units named “Web Development” and “Operating Systems”.
+  </p>
+  <div class="panel scroll">
+    <table>
+      <thead><tr><th>Verdict</th><th>Count</th><th>Meaning</th><th>Outcome</th></tr></thead>
+      <tbody>
+      <tr class="v-direct_match">
+        <td><span class="dot"></span>Direct match</td>
+        <td class="num">8</td>
+        <td class="muted">a syllabus for exactly this course</td>
+        <td>kept</td>
+      </tr>
+      <tr class="v-partial_match">
+        <td><span class="dot"></span>Partial match</td>
+        <td class="num">1</td>
+        <td class="muted">contains this course among others</td>
+        <td>kept</td>
+      </tr>
+      <tr class="v-field_level">
+        <td><span class="dot"></span>Field level</td>
+        <td class="num">15</td>
+        <td class="muted">about the broader field, not this course</td>
+        <td>filtered out</td>
+      </tr>
+      <tr class="v-unrelated">
+        <td><span class="dot"></span>Unrelated</td>
+        <td class="num">3</td>
+        <td class="muted">not about this subject at all</td>
+        <td>filtered out</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Canonical syllabus</h2>
+  <p class="muted" style="font-size:0.92rem">
+    5 units, 15 topics, merged from
+    4 sources. Unit count is organic — no target shape is imposed;
+    the merge groups topics by meaning rather than by source position.
+  </p>
+      <section class="unit">
+        <h3>Foundations and Algorithm Analysis <span class="count">3 topics</span></h3>
+        <ol>
+          <li>Complexity Analysis and Growth of Functions<span class="prov">3 sources</span></li>
+          <li>Solving Recurrences and Master Theorem<span class="prov">1 source</span></li>
+          <li>Divide and Conquer Technique<span class="prov">1 source</span></li>
+        </ol>
+      </section>
+      <section class="unit">
+        <h3>Linear and Basic Data Structures <span class="count">3 topics</span></h3>
+        <ol>
+          <li>Lists and Linked Lists<span class="prov">3 sources</span></li>
+          <li>Stacks and Queues<span class="prov">3 sources</span></li>
+          <li>Hash Tables and Maps<span class="prov">2 sources</span></li>
+        </ol>
+      </section>
+      <section class="unit">
+        <h3>Trees and Advanced Data Structures <span class="count">4 topics</span></h3>
+        <ol>
+          <li>Trees and Binary Search Trees<span class="prov">3 sources</span></li>
+          <li>Red-Black Trees<span class="prov">1 source</span></li>
+          <li>Priority Queues and Heapsort<span class="prov">2 sources</span></li>
+          <li>Persistent Data Structures<span class="prov">1 source</span></li>
+        </ol>
+      </section>
+      <section class="unit">
+        <h3>Sorting and Searching <span class="count">2 topics</span></h3>
+        <ol>
+          <li>Sorting Algorithms<span class="prov">3 sources</span></li>
+          <li>Sorting in Linear Time<span class="prov">2 sources</span></li>
+        </ol>
+      </section>
+      <section class="unit">
+        <h3>Graph Algorithms <span class="count">3 topics</span></h3>
+        <ol>
+          <li>Elementary Graph Algorithms, BFS, and DFS<span class="prov">3 sources</span></li>
+          <li>Minimum Spanning Trees<span class="prov">1 source</span></li>
+          <li>Single Source Shortest Paths<span class="prov">1 source</span></li>
+        </ol>
+      </section>
+
+  <h2>How the merge reasoned</h2>
+  <blockquote>The consensus across the first three standard data structures courses emphasizes foundational concepts, linear structures, trees, sorting, and graph algorithms. Source 4 represents an advanced graduate-level course on advanced data structures, which was largely filtered out except for persistent data structures and linear-time sorting overlapping with standard curricula. Generic administrative items like exams, syllabus reviews, and introductory fluff were excluded per instructions. Topics were grouped into logical thematic units and ordered pedagogically from basic analysis to complex graph and tree structures.</blockquote>
+
+  <h2>Sources</h2>
+  <div class="two">
+    <div class="panel">
+      <h3>Contributed to the syllabus <span class="muted">(4)</span></h3>
+      <ul>
+        <li><a href="https://www.cs.iastate.edu/courses/com-s-2280">https://www.cs.iastate.edu/courses/com-s-2280</a></li>
+        <li><a href="https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_CS_146_Spring_2023.pdf">https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_…</a></li>
+        <li><a href="https://snow.edu/academics/science_math/engineering/cs/syllabus.html?q=5760">https://snow.edu/academics/science_math/engineering/cs/syllabus.html?q=5760</a></li>
+        <li><a href="https://ocw.mit.edu/courses/6-851-advanced-data-structures-spring-2012/resources/lecture-videos">https://ocw.mit.edu/courses/6-851-advanced-data-structures-spring-2012/resources/lecture-vi…</a></li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3>Collected, not structured <span class="muted">(5)</span></h3>
+      <ul>
+        <li><a href="https://www.subr.edu/assets/subr/ComputerScience/CMPS201_Syllabus.pdf">https://www.subr.edu/assets/subr/ComputerScience/CMPS201_Syllabus.pdf</a></li>
+        <li><a href="https://miamioh.edu/cec/departments/computer-science-software-engineering/academics/course-descriptions/cse-courses/cse-274.html">https://miamioh.edu/cec/departments/computer-science-software-engineering/academics/course-…</a></li>
+        <li><a href="https://ds.cs.rutgers.edu/">https://ds.cs.rutgers.edu/</a></li>
+        <li><a href="https://archive.nptel.ac.in/content/syllabus_pdf/106106127.pdf">https://archive.nptel.ac.in/content/syllabus_pdf/106106127.pdf</a></li>
+        <li><a href="https://www.mccormick.northwestern.edu/computer-science/academics/courses/descriptions/208.html">https://www.mccormick.northwestern.edu/computer-science/academics/courses/descriptions/208.…</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Raw evidence</h2>
+  <div class="panel files">
+    <p><a href="full_response.json"><code>full_response.json</code></a> — the complete
+       pipeline response, including the per-source structures captured before merging.</p>
+    <p><a href="trace.jsonl"><code>trace.jsonl</code></a> — every external call made
+       during this run (80 records: request, response, status, duration).
+       API keys are redacted by the logging layer.</p>
+    <p style="margin:0"><a href="doctor_output.txt"><code>doctor_output.txt</code></a> —
+       a <code>cli doctor</code> pre-flight check from the same session.</p>
+  </div>
+
+  <footer>
+    Generated from a real pipeline run on 2026-08-09.
+    Reproduce with <code>python -m syllabus_agent.cli "data structures" --verbose</code>
+    — results will differ, since they depend on what the search API returns that day.
+  </footer>
+
+</div>
+</body>
+</html>

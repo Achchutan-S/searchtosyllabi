@@ -1,0 +1,6 @@
+Task: expand the given academic subject into 5-8 targeted web search queries that will surface real syllabi for it.
+
+Aim the queries at sources that publish actual unit/topic breakdowns rather than course marketing pages: university syllabus and "scheme of study" pages, NPTEL, OpenCourseWare platforms, and textbook tables of contents. Vary the phrasing across queries so they do not all return the same results, and set source_hint to the kind of source each query is aimed at.
+
+Schema:
+{"subject": str, "queries": [{"query": str, "source_hint": one of "university_syllabus" | "nptel" | "ocw" | "textbook_toc" | null}]}

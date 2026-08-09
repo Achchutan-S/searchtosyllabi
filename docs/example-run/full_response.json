@@ -1,0 +1,373 @@
+{
+  "subject": "data structures",
+  "route": "genuine_academic_subject",
+  "classification": {
+    "subject": "data structures",
+    "route": "genuine_academic_subject",
+    "confidence": 1.0,
+    "reasoning": "Data structures is a foundational and universally taught course in computer science curricula worldwide.",
+    "clarifying_question": null,
+    "suggested_refinements": []
+  },
+  "stage_reached": "structuring",
+  "syllabus": {
+    "subject": "data structures",
+    "units": [
+      {
+        "unit_title": "Foundations and Algorithm Analysis",
+        "topics": [
+          {
+            "name": "Complexity Analysis and Growth of Functions",
+            "source_urls": [
+              "https://www.cs.iastate.edu/courses/com-s-2280",
+              "https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_CS_146_Spring_2023.pdf",
+              "https://snow.edu/academics/science_math/engineering/cs/syllabus.html?q=5760"
+            ]
+          },
+          {
+            "name": "Solving Recurrences and Master Theorem",
+            "source_urls": [
+              "https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_CS_146_Spring_2023.pdf"
+            ]
+          },
+          {
+            "name": "Divide and Conquer Technique",
+            "source_urls": [
+              "https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_CS_146_Spring_2023.pdf"
+            ]
+          }
+        ]
+      },
+      {
+        "unit_title": "Linear and Basic Data Structures",
+        "topics": [
+          {
+            "name": "Lists and Linked Lists",
+            "source_urls": [
+              "https://www.cs.iastate.edu/courses/com-s-2280",
+              "https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_CS_146_Spring_2023.pdf",
+              "https://snow.edu/academics/science_math/engineering/cs/syllabus.html?q=5760"
+            ]
+          },
+          {
+            "name": "Stacks and Queues",
+            "source_urls": [
+              "https://www.cs.iastate.edu/courses/com-s-2280",
+              "https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_CS_146_Spring_2023.pdf",
+              "https://snow.edu/academics/science_math/engineering/cs/syllabus.html?q=5760"
+            ]
+          },
+          {
+            "name": "Hash Tables and Maps",
+            "source_urls": [
+              "https://www.cs.iastate.edu/courses/com-s-2280",
+              "https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_CS_146_Spring_2023.pdf"
+            ]
+          }
+        ]
+      },
+      {
+        "unit_title": "Trees and Advanced Data Structures",
+        "topics": [
+          {
+            "name": "Trees and Binary Search Trees",
+            "source_urls": [
+              "https://www.cs.iastate.edu/courses/com-s-2280",
+              "https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_CS_146_Spring_2023.pdf",
+              "https://snow.edu/academics/science_math/engineering/cs/syllabus.html?q=5760"
+            ]
+          },
+          {
+            "name": "Red-Black Trees",
+            "source_urls": [
+              "https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_CS_146_Spring_2023.pdf"
+            ]
+          },
+          {
+            "name": "Priority Queues and Heapsort",
+            "source_urls": [
+              "https://www.cs.iastate.edu/courses/com-s-2280",
+              "https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_CS_146_Spring_2023.pdf"
+            ]
+          },
+          {
+            "name": "Persistent Data Structures",
+            "source_urls": [
+              "https://ocw.mit.edu/courses/6-851-advanced-data-structures-spring-2012/resources/lecture-videos"
+            ]
+          }
+        ]
+      },
+      {
+        "unit_title": "Sorting and Searching",
+        "topics": [
+          {
+            "name": "Sorting Algorithms",
+            "source_urls": [
+              "https://www.cs.iastate.edu/courses/com-s-2280",
+              "https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_CS_146_Spring_2023.pdf",
+              "https://snow.edu/academics/science_math/engineering/cs/syllabus.html?q=5760"
+            ]
+          },
+          {
+            "name": "Sorting in Linear Time",
+            "source_urls": [
+              "https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_CS_146_Spring_2023.pdf",
+              "https://ocw.mit.edu/courses/6-851-advanced-data-structures-spring-2012/resources/lecture-videos"
+            ]
+          }
+        ]
+      },
+      {
+        "unit_title": "Graph Algorithms",
+        "topics": [
+          {
+            "name": "Elementary Graph Algorithms, BFS, and DFS",
+            "source_urls": [
+              "https://www.cs.iastate.edu/courses/com-s-2280",
+              "https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_CS_146_Spring_2023.pdf",
+              "https://snow.edu/academics/science_math/engineering/cs/syllabus.html?q=5760"
+            ]
+          },
+          {
+            "name": "Minimum Spanning Trees",
+            "source_urls": [
+              "https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_CS_146_Spring_2023.pdf"
+            ]
+          },
+          {
+            "name": "Single Source Shortest Paths",
+            "source_urls": [
+              "https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_CS_146_Spring_2023.pdf"
+            ]
+          }
+        ]
+      }
+    ],
+    "total_topics": 15,
+    "merge_notes": "The consensus across the first three standard data structures courses emphasizes foundational concepts, linear structures, trees, sorting, and graph algorithms. Source 4 represents an advanced graduate-level course on advanced data structures, which was largely filtered out except for persistent data structures and linear-time sorting overlapping with standard curricula. Generic administrative items like exams, syllabus reviews, and introductory fluff were excluded per instructions. Topics were grouped into logical thematic units and ordered pedagogically from basic analysis to complex graph and tree structures.",
+    "source_count": 4,
+    "source_urls": [
+      "https://www.cs.iastate.edu/courses/com-s-2280",
+      "https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_CS_146_Spring_2023.pdf",
+      "https://snow.edu/academics/science_math/engineering/cs/syllabus.html?q=5760",
+      "https://ocw.mit.edu/courses/6-851-advanced-data-structures-spring-2012/resources/lecture-videos"
+    ],
+    "per_source_structures": [
+      {
+        "source_url": "https://www.cs.iastate.edu/courses/com-s-2280",
+        "trust_score": 0.8,
+        "units": [
+          {
+            "unit_title": "Topics",
+            "topics": [
+              "Java and Object-Oriented Concepts",
+              "Exception Handling",
+              "Analysis of Algorithms",
+              "Sorting Algorithms",
+              "Generics in Java",
+              "Collection Interface and Iterators",
+              "Lists",
+              "Stacks",
+              "Queues and Priority Queues",
+              "Trees, Binary Search Trees",
+              "Graphs and basic Graph Algorithms",
+              "Maps"
+            ],
+            "ltpc": null
+          }
+        ],
+        "notes": "Credits and contact hours are 3 credits, 4 contact hours"
+      },
+      {
+        "source_url": "https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_CS_146_Spring_2023.pdf",
+        "trust_score": 0.8,
+        "units": [
+          {
+            "unit_title": "Topics",
+            "topics": [
+              "Introduction: syllabus, Course mechanic & Logistics",
+              "Review Data Structures (lists, stacks, queues, trees)",
+              "Basic algorithms, Insertion sort",
+              "Growth of functions- O, Ω, Θ, o, ω",
+              "Divide and Conquer technique: Merge Sort, other examples",
+              "Solving recurrences",
+              "Master Theorem",
+              "Heapsort, Priority Queues",
+              "Sorting in linear time",
+              "Counting sort, Radix Sort",
+              "Review",
+              "Exam 1",
+              "Hash Tables",
+              "Quicksort",
+              "Binary Search Trees",
+              "Red-Black trees",
+              "Dynamic Programming",
+              "Greedy Algorithms",
+              "Elementary Graph Algorithms, Undirected graph",
+              "BFS, DFS",
+              "Exam 2",
+              "Directed graph, Topological Sort",
+              "Strongly connected components",
+              "Minimum Spanning Tree – Prim’s and Kruskal's Algorithm",
+              "Single Source Shortest Paths: Dijkstra’s Algorithm",
+              "NP-complete problems",
+              "Final Exam 9:45 AM-12:00 PM"
+            ],
+            "ltpc": "3 Unit(s)"
+          }
+        ],
+        "notes": "The document structures the course schedule by weeks and dates rather than formal units, so topics are grouped under a single units list."
+      },
+      {
+        "source_url": "https://snow.edu/academics/science_math/engineering/cs/syllabus.html?q=5760",
+        "trust_score": 0.8,
+        "units": [
+          {
+            "unit_title": "Topics",
+            "topics": [
+              "Data abstraction",
+              "Linked lists",
+              "Stacks and queues",
+              "Trees",
+              "Tables",
+              "Graphs",
+              "Recursion",
+              "Complexity analysis",
+              "Sorting and searching"
+            ],
+            "ltpc": null
+          }
+        ],
+        "notes": "The syllabus does not use a formal unit or module numbering system, so all topics are grouped under a single unit."
+      },
+      {
+        "source_url": "https://ocw.mit.edu/courses/6-851-advanced-data-structures-spring-2012/resources/lecture-videos",
+        "trust_score": 0.95,
+        "units": [
+          {
+            "unit_title": "Topics",
+            "topics": [
+              "Persistent Data Structures",
+              "Retroactive Data Structures",
+              "Geometric Structures I",
+              "Geometric Structures II",
+              "Dynamic Optimality I",
+              "Dynamic Optimality II",
+              "Memory Hierarchy Models",
+              "Cache-Oblivious Structures I",
+              "Cache-Oblivious Structures II",
+              "Dictionaries",
+              "Integer Models",
+              "Fusion Trees",
+              "Integer Lower Bounds",
+              "Sorting in Linear Time",
+              "Static Trees",
+              "Strings",
+              "Succinct Structures I",
+              "Succinct Structures II",
+              "Dynamic Graphs I",
+              "Dynamic Graphs II",
+              "Dynamic Connectivity Lower Bound",
+              "History of Memory Models"
+            ],
+            "ltpc": null
+          }
+        ],
+        "notes": "Extracted from lecture video session titles for MIT 6.851 Advanced Data Structures Spring 2012."
+      }
+    ],
+    "collected_not_structured": [
+      "https://www.subr.edu/assets/subr/ComputerScience/CMPS201_Syllabus.pdf",
+      "https://miamioh.edu/cec/departments/computer-science-software-engineering/academics/course-descriptions/cse-courses/cse-274.html",
+      "https://ds.cs.rutgers.edu/",
+      "https://archive.nptel.ac.in/content/syllabus_pdf/106106127.pdf",
+      "https://www.mccormick.northwestern.edu/computer-science/academics/courses/descriptions/208.html"
+    ],
+    "source_ranking": [
+      {
+        "source_url": "https://www.cs.iastate.edu/courses/com-s-2280",
+        "domain_score": 0.8,
+        "content_score": 0.477,
+        "blended_score": 0.6385,
+        "relevance_penalty": 1.0,
+        "extracted_chars": 5619,
+        "structured": true
+      },
+      {
+        "source_url": "https://www.sjsu.edu/cs/docs/spring_2023_syllabi/Data_Structures_and_Algorithms_Section_07_CS_146_Spring_2023.pdf",
+        "domain_score": 0.8,
+        "content_score": 0.45,
+        "blended_score": 0.625,
+        "relevance_penalty": 1.0,
+        "extracted_chars": 7140,
+        "structured": true
+      },
+      {
+        "source_url": "https://snow.edu/academics/science_math/engineering/cs/syllabus.html?q=5760",
+        "domain_score": 0.8,
+        "content_score": 0.264,
+        "blended_score": 0.532,
+        "relevance_penalty": 1.0,
+        "extracted_chars": 3273,
+        "structured": true
+      },
+      {
+        "source_url": "https://ocw.mit.edu/courses/6-851-advanced-data-structures-spring-2012/resources/lecture-videos",
+        "domain_score": 0.95,
+        "content_score": 0.083,
+        "blended_score": 0.5165,
+        "relevance_penalty": 1.0,
+        "extracted_chars": 2507,
+        "structured": true
+      },
+      {
+        "source_url": "https://www.subr.edu/assets/subr/ComputerScience/CMPS201_Syllabus.pdf",
+        "domain_score": 0.8,
+        "content_score": 0.227,
+        "blended_score": 0.5135,
+        "relevance_penalty": 1.0,
+        "extracted_chars": 5476,
+        "structured": false
+      },
+      {
+        "source_url": "https://miamioh.edu/cec/departments/computer-science-software-engineering/academics/course-descriptions/cse-courses/cse-274.html",
+        "domain_score": 0.8,
+        "content_score": 0.226,
+        "blended_score": 0.513,
+        "relevance_penalty": 1.0,
+        "extracted_chars": 4619,
+        "structured": false
+      },
+      {
+        "source_url": "https://ds.cs.rutgers.edu/",
+        "domain_score": 0.8,
+        "content_score": 0.455,
+        "blended_score": 0.5075,
+        "relevance_penalty": 0.7,
+        "extracted_chars": 14979,
+        "structured": false
+      },
+      {
+        "source_url": "https://archive.nptel.ac.in/content/syllabus_pdf/106106127.pdf",
+        "domain_score": 0.8,
+        "content_score": 0.125,
+        "blended_score": 0.4625,
+        "relevance_penalty": 1.0,
+        "extracted_chars": 2181,
+        "structured": false
+      },
+      {
+        "source_url": "https://www.mccormick.northwestern.edu/computer-science/academics/courses/descriptions/208.html",
+        "domain_score": 0.8,
+        "content_score": 0.021,
+        "blended_score": 0.4105,
+        "relevance_penalty": 1.0,
+        "extracted_chars": 1068,
+        "structured": false
+      }
+    ],
+    "generated_at": "2026-08-09T10:46:14.585087Z"
+  },
+  "error": null
+}
