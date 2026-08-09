@@ -4,6 +4,7 @@ whenever the route isn't genuine_academic_subject.
 
 import logging
 
+from syllabus_agent.clients.cache_client import CacheClient
 from syllabus_agent.clients.extraction_client import BaseExtractor
 from syllabus_agent.clients.llm_client import LLMClient
 from syllabus_agent.clients.search_client import SearchClient
@@ -64,8 +65,55 @@ async def run_pipeline(
     pdf_text_extractor: BaseExtractor,
     pdf_ocr_extractor: BaseExtractor,
     fetch: Fetcher | None = None,
+    cache: CacheClient | None = None,
+    force_refresh: bool = False,
 ) -> PipelineResult:
-    """Single orchestrator entry point for the whole search-and-structure pipeline."""
+    """Single orchestrator entry point for the whole search-and-structure pipeline.
+
+    With a `cache` wired in, an already-generated subject is served from storage
+    without running a single stage — the difference between ~40 LLM calls and
+    zero. `force_refresh` skips the lookup but still writes the fresh result
+    back, so a demo can show the live pipeline and still leave the cache warm.
+
+    Caching wraps the stages rather than living inside them: no stage knows the
+    cache exists, and every route (including the short-circuiting ones) is
+    cached by the same code path.
+    """
+    if cache is not None and not force_refresh:
+        cached = await cache.get(subject)
+        if cached is not None:
+            return cached.model_copy(update={"from_cache": True})
+
+    if cache is not None and force_refresh:
+        logger.info("force_refresh set for %r — bypassing the cache lookup.", subject)
+
+    result = await _run_stages(
+        subject,
+        llm=llm,
+        search=search,
+        html_extractor=html_extractor,
+        pdf_text_extractor=pdf_text_extractor,
+        pdf_ocr_extractor=pdf_ocr_extractor,
+        fetch=fetch,
+    )
+
+    if cache is not None:
+        await cache.set(subject, result)
+
+    return result
+
+
+async def _run_stages(
+    subject: str,
+    *,
+    llm: LLMClient,
+    search: SearchClient,
+    html_extractor: BaseExtractor,
+    pdf_text_extractor: BaseExtractor,
+    pdf_ocr_extractor: BaseExtractor,
+    fetch: Fetcher | None = None,
+) -> PipelineResult:
+    """The pipeline itself, unaware of caching."""
     classification = await classify_subject(subject, llm)
 
     if classification.route != RouteDecision.GENUINE_ACADEMIC_SUBJECT:

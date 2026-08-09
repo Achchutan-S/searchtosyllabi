@@ -3,6 +3,7 @@
 Usage:
     python -m syllabus_agent.cli "data structures"
     python -m syllabus_agent.cli "data structures" --verbose
+    python -m syllabus_agent.cli "data structures" --force-refresh
     python -m syllabus_agent.cli doctor
     python -m syllabus_agent.cli doctor --probe-models
     python -m syllabus_agent.cli doctor --probe-models --candidates gemini-3.5-flash,gemini-2.0-flash
@@ -17,6 +18,7 @@ from syllabus_agent.clients.extraction_client import (
     PdfOcrExtractor,
     PdfTextExtractor,
 )
+from syllabus_agent.clients.cache_client import MongoCacheClient
 from syllabus_agent.clients.llm_client import OpenAICompatibleLLMClient
 from syllabus_agent.clients.search_client import TavilySearchClient
 from syllabus_agent.config import get_settings, warn_on_missing_keys
@@ -89,16 +91,22 @@ def _pipeline_command(argv: list[str]) -> None:
         help="Log full request/response bodies to the console (DEBUG). "
         "The JSONL trace file always contains full detail regardless.",
     )
+    parser.add_argument(
+        "--force-refresh",
+        action="store_true",
+        help="Ignore any cached result and run the full pipeline anyway. The "
+        "fresh result is still written back to the cache.",
+    )
     args = parser.parse_args(argv)
 
     log_file = configure_logging(verbose=args.verbose)
     print(f"Full call trace: {log_file}", file=sys.stderr)
 
-    result = asyncio.run(_run(args.subject))
+    result = asyncio.run(_run(args.subject, force_refresh=args.force_refresh))
     print(result.model_dump_json(indent=2))
 
 
-async def _run(subject: str):
+async def _run(subject: str, *, force_refresh: bool = False):
     settings = get_settings()
     warn_on_missing_keys(settings)
     # Registered so the literal key values are scrubbed from logs even if they
@@ -112,6 +120,11 @@ async def _run(subject: str):
         model=settings.llm_model,
     )
     search = TavilySearchClient(api_key=settings.tavily_api_key)
+    cache = MongoCacheClient(
+        settings.mongodb_uri,
+        db_name=settings.mongodb_db,
+        ttl_days=settings.cache_ttl_days,
+    )
 
     return await run_pipeline(
         subject,
@@ -120,6 +133,8 @@ async def _run(subject: str):
         html_extractor=HtmlExtractor(),
         pdf_text_extractor=PdfTextExtractor(),
         pdf_ocr_extractor=PdfOcrExtractor(),
+        cache=cache,
+        force_refresh=force_refresh,
     )
 
 

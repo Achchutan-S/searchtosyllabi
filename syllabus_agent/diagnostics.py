@@ -43,6 +43,7 @@ _SYMBOLS: dict[Status, str] = {"pass": "✓", "fail": "✗", "warn": "⚠"}
 
 Poster = Callable[..., Awaitable[httpx.Response]]
 Getter = Callable[..., Awaitable[httpx.Response]]
+Pinger = Callable[[], Awaitable[None]]
 
 
 @dataclass
@@ -236,6 +237,63 @@ async def check_tavily(settings: Settings, *, post: Poster | None = None) -> Che
     return CheckResult("fail", "Tavily search", f"HTTP {response.status_code}")
 
 
+# --- e) mongodb cache -------------------------------------------------------
+
+
+async def check_mongodb(settings: Settings, *, ping: Pinger | None = None) -> CheckResult:
+    """Ping the cache server. Free — `ping` is an admin command, not a query.
+
+    Reports `warn`, never `fail`, and deliberately does not affect the exit
+    code: the cache is an optimisation, and the pipeline runs correctly without
+    it. What you lose is quota — every run pays ~40 LLM calls instead of the
+    cached zero — so a broken connection is still worth surfacing here rather
+    than discovering it as an unexplained slow run.
+    """
+    if ping is None:
+        from syllabus_agent.clients.cache_client import MongoCacheClient
+
+        cache = MongoCacheClient(
+            settings.mongodb_uri,
+            db_name=settings.mongodb_db,
+            ttl_days=settings.cache_ttl_days,
+        )
+        ping = cache.ping
+
+    uri = settings.mongodb_uri.strip()
+    if not uri:
+        return CheckResult("warn", "MongoDB cache", "MONGODB_URI not set — caching disabled")
+
+    try:
+        await ping()
+    except Exception as exc:  # noqa: BLE001 - any driver error is the same verdict here
+        return CheckResult(
+            "warn",
+            "MongoDB cache",
+            f"unreachable at {_safe_uri(uri)} ({type(exc).__name__}) — "
+            f"runs will work but cost full quota every time",
+        )
+
+    return CheckResult(
+        "pass",
+        "MongoDB cache",
+        f"ping OK — {_safe_uri(uri)}, db={settings.mongodb_db}, "
+        f"TTL {settings.cache_ttl_days}d",
+    )
+
+
+def _safe_uri(uri: str) -> str:
+    """Strip any user:password@ from a connection string before printing it.
+
+    Atlas URIs carry credentials inline, and `doctor` output gets pasted into
+    issues and chat windows.
+    """
+    scheme, _, rest = uri.partition("://")
+    if not rest:
+        return uri
+    _, at, host = rest.rpartition("@")
+    return f"{scheme}://{'***@' if at else ''}{host}"
+
+
 # --- orchestration ----------------------------------------------------------
 
 
@@ -246,12 +304,15 @@ async def run_doctor(
     candidates: list[str] | None = None,
     post: Poster | None = None,
     get: Getter | None = None,
+    ping: Pinger | None = None,
 ) -> int:
     """Run all checks, print a report, return a process exit code.
 
     Exit code is 0 only when env sanity, the configured-model probe, and the
     Tavily check all pass. Model listing is informational and never decides the
-    exit code, because a model can be absent from the list and still work.
+    exit code, because a model can be absent from the list and still work. The
+    cache check is informational for the same reason — an unreachable Mongo
+    costs quota, not correctness.
     """
     settings = settings or get_settings()
 
@@ -277,6 +338,13 @@ async def run_doctor(
     print("\nSearch provider")
     tavily = await check_tavily(settings, post=post)
     print(tavily.render())
+
+    print("\nCache")
+    mongo = await check_mongodb(settings, ping=ping)
+    print(mongo.render())
+    if mongo.status != "pass":
+        print("    note: caching is optional — the pipeline still runs, but every")
+        print("    repeat of a subject re-spends the full LLM quota.")
 
     probe_results: list[CheckResult] = []
     if do_probe_models:

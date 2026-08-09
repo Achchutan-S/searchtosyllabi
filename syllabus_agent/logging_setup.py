@@ -38,7 +38,7 @@ _SENSITIVE_KEY_FRAGMENTS = (
     "secret",
 )
 
-CallType = Literal["llm", "search", "extraction"]
+CallType = Literal["llm", "search", "extraction", "cache"]
 CallStatus = Literal["success", "http_error", "parse_error", "rate_limited"]
 
 # Set by each pipeline stage so clients can attribute a call without the stage

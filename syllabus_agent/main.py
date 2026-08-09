@@ -12,6 +12,7 @@ from syllabus_agent.clients.extraction_client import (
     PdfOcrExtractor,
     PdfTextExtractor,
 )
+from syllabus_agent.clients.cache_client import MongoCacheClient
 from syllabus_agent.clients.llm_client import OpenAICompatibleLLMClient
 from syllabus_agent.clients.search_client import TavilySearchClient
 from syllabus_agent.config import get_settings, warn_on_missing_keys
@@ -29,6 +30,11 @@ app = FastAPI(
 
 class SyllabusRequest(BaseModel):
     subject: str
+    force_refresh: bool = False
+    """Skip the cache lookup and run the pipeline for real. The fresh result is
+    still cached afterwards. Also accepted as a `?force_refresh=true` query
+    param, so it can be flipped from a browser or curl without editing the body.
+    """
 
 
 @app.on_event("startup")
@@ -62,7 +68,9 @@ async def handle_unexpected_error(request: Request, exc: Exception) -> JSONRespo
 
 
 @app.post("/syllabus", response_model=PipelineResult)
-async def build_syllabus(request: SyllabusRequest) -> PipelineResult:
+async def build_syllabus(
+    request: SyllabusRequest, force_refresh: bool = False
+) -> PipelineResult:
     settings = get_settings()
     llm = OpenAICompatibleLLMClient(
         base_url=settings.llm_base_url,
@@ -70,6 +78,11 @@ async def build_syllabus(request: SyllabusRequest) -> PipelineResult:
         model=settings.llm_model,
     )
     search = TavilySearchClient(api_key=settings.tavily_api_key)
+    cache = MongoCacheClient(
+        settings.mongodb_uri,
+        db_name=settings.mongodb_db,
+        ttl_days=settings.cache_ttl_days,
+    )
 
     return await run_pipeline(
         request.subject,
@@ -78,4 +91,8 @@ async def build_syllabus(request: SyllabusRequest) -> PipelineResult:
         html_extractor=HtmlExtractor(),
         pdf_text_extractor=PdfTextExtractor(),
         pdf_ocr_extractor=PdfOcrExtractor(),
+        cache=cache,
+        # Either channel can set it; the query param is the convenient one from
+        # a browser or curl, the body field the natural one from a client.
+        force_refresh=request.force_refresh or force_refresh,
     )

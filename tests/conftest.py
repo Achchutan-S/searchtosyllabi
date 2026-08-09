@@ -6,9 +6,11 @@ interfaces in the first place.
 
 import pytest
 
+from syllabus_agent.clients.cache_client import CacheClient, is_fresh, normalize_subject
 from syllabus_agent.clients.extraction_client import BaseExtractor
 from syllabus_agent.clients.llm_client import ChatMessage, LLMClient
 from syllabus_agent.clients.search_client import SearchClient, SearchHit
+from syllabus_agent.schemas.pipeline import PipelineResult
 
 
 _DEFAULT_CLASSIFICATION = (
@@ -117,6 +119,36 @@ class FakeSearchClient(SearchClient):
         return self.hits[:max_results]
 
 
+class FakeCacheClient(CacheClient):
+    """In-memory cache with the same key normalisation and TTL policy as the
+    Mongo one — both call the shared `normalize_subject`/`is_fresh` helpers, so
+    the fake cannot drift from the real freshness rule. Records every call.
+    """
+
+    def __init__(self, ttl_days: int = 30) -> None:
+        self.ttl_days = ttl_days
+        self.store: dict[str, PipelineResult] = {}
+        self.get_calls: list[str] = []
+        self.set_calls: list[tuple[str, PipelineResult]] = []
+
+    async def get(self, subject: str) -> PipelineResult | None:
+        key = normalize_subject(subject)
+        self.get_calls.append(key)
+        result = self.store.get(key)
+        if result is None or not is_fresh(result, self.ttl_days):
+            return None
+        return result
+
+    async def set(self, subject: str, response: PipelineResult) -> None:
+        key = normalize_subject(subject)
+        self.set_calls.append((key, response))
+        self.store[key] = response.model_copy(update={"from_cache": False})
+
+    def seed(self, subject: str, response: PipelineResult) -> None:
+        """Put an entry in directly, without recording it as a `set` call."""
+        self.store[normalize_subject(subject)] = response
+
+
 class FakeExtractor(BaseExtractor):
     def __init__(self, blocks: list[str] | None = None) -> None:
         self.blocks = blocks if blocks is not None else [
@@ -136,6 +168,11 @@ def fake_llm() -> FakeLLMClient:
 @pytest.fixture
 def fake_search() -> FakeSearchClient:
     return FakeSearchClient()
+
+
+@pytest.fixture
+def fake_cache() -> FakeCacheClient:
+    return FakeCacheClient()
 
 
 @pytest.fixture

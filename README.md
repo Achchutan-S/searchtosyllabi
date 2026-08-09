@@ -78,7 +78,7 @@ Against the original five-phase plan (`syllabus-agent-idea-doc.md`):
 | Phase | Scope | Status |
 |---|---|---|
 | **1 — Layer One** | Search & structuring pipeline | **Built and working** |
-| **2 — Storage** | MongoDB, caching, versioning, freshness | Not started |
+| **2 — Storage** | MongoDB, caching, versioning, freshness | **Caching built** (TTL-based, see [Caching](#caching)); no versioning |
 | **3 — Content generation** | Per-topic "AI professor" lecture notes | Not started |
 | **4 — Delivery** | Full API + React frontend | One endpoint; no frontend |
 | **5 — Extensions** | Quizzes, progress tracking, Q&A | Not started |
@@ -149,6 +149,9 @@ behind an abstract base class, so it's swappable and mockable:
   not a code change.
 - `search_client.py` — `SearchClient` ABC; `TavilySearchClient` is the concrete
   implementation for now.
+- `cache_client.py` — `CacheClient` ABC (`get`/`set` a whole `PipelineResult` by
+  normalised subject); `MongoCacheClient` is the concrete implementation. See
+  [Caching](#caching).
 - `extraction_client.py` — `HtmlExtractor` (BeautifulSoup), `PdfTextExtractor`
   (PyMuPDF), `PdfOcrExtractor` (PyMuPDF render + pytesseract OCR fallback for
   scanned PDFs), plus a `detect_format()` helper.
@@ -159,6 +162,7 @@ behind an abstract base class, so it's swappable and mockable:
 |---|---|
 | `llm_client.py` (`OpenAICompatibleLLMClient`) | **Live.** Real async httpx POST to `{base_url}/chat/completions`, 30s timeout, 3 attempts, honours `Retry-After` (and Gemini's "retry in Ns" 429 body), strips ```` ```json ```` fences, logs status + body on failure. |
 | `search_client.py` (`TavilySearchClient`) | **Live.** Real POST to `api.tavily.com/search` with `search_depth="basic"` to conserve free-tier credits. Same retry/timeout/logging pattern. |
+| `cache_client.py` (`MongoCacheClient`) | **Live.** Real motor/MongoDB, one document per normalised subject, `serverSelectionTimeoutMS=3000` so a missing server is cheap to discover. Every failure degrades to a cache miss rather than raising. |
 | `extraction_client.py` (HTML / PDF / OCR) | **Live.** Real `httpx` fetch with the same retry/timeout shape; BeautifulSoup for HTML (chrome stripped, table cells preserved with `\|` separators so LTPC rows survive); PyMuPDF per page with `[page N]` markers; automatic pytesseract OCR fallback when the text layer is too sparse. CPU-bound parsing runs via `asyncio.to_thread`. |
 
 There are no stubs left anywhere in the pipeline.
@@ -251,6 +255,71 @@ that several older models (`gemini-2.5-flash`, `gemini-2.5-flash-lite`) return
 404 "no longer available to new users" even though they appear in `GET /models`.
 `gemini-3.5-flash` and `gemini-3.5-flash-lite` both work.
 
+## Caching
+
+A MongoDB result cache sits **in front of** the pipeline, in the orchestrator.
+Re-running a subject that has already been generated returns the stored result
+without making a single LLM call, which is the difference between ~3 demo runs
+per day and an unlimited number of them.
+
+```bash
+python -m syllabus_agent.cli "compiler engineering"                  # miss — full pipeline
+python -m syllabus_agent.cli "compiler engineering"                  # hit — instant, 0 LLM calls
+python -m syllabus_agent.cli "compiler engineering" --force-refresh  # ignore the hit, run it live
+```
+
+```bash
+curl -X POST localhost:8000/syllabus -d '{"subject": "compiler engineering"}'
+curl -X POST 'localhost:8000/syllabus?force_refresh=true' -d '{"subject": "compiler engineering"}'
+# force_refresh is accepted as a query param or a body field.
+```
+
+Configuration (`.env`):
+
+| Setting | Default | Notes |
+|---|---|---|
+| `MONGODB_URI` | `mongodb://localhost:27017` | MongoDB Atlas's free M0 tier works fine — paste its `mongodb+srv://` string |
+| `MONGODB_DB` | `syllabus_agent` | Collection is always `syllabus_cache` |
+| `CACHE_TTL_DAYS` | `30` | A hit older than this is treated as a miss and regenerated. `0` disables caching |
+
+**How it works.**
+
+- **Key**: the subject, lowercased and whitespace-collapsed, so `"Data Structures"`,
+  `"data structures"` and `"  data   structures "` are one entry, not three.
+- **Value**: the whole `PipelineResult`, whichever route it took. Classification-only
+  results (`needs_clarification`, `rejected_non_academic`, `general_knowledge`) are
+  cached too — repeatedly probing a rejected subject is exactly what a demo audience
+  does, and it shouldn't keep costing a classifier call.
+- **Freshness**: `PipelineResult.generated_at` (new — a top-level field, because
+  `CanonicalSyllabus.generated_at` only exists on the full-pipeline route) versus
+  `CACHE_TTL_DAYS`. Stale entries are overwritten by the regenerated result.
+- **`from_cache`**: a new `bool` on `PipelineResult`, true only for a result served
+  without running any stage. It is never *stored* as true — the flag describes how a
+  response was served, not what's on disk.
+- **`--force-refresh` / `force_refresh`** skips the lookup but still writes the fresh
+  result back, so you can demo the live pipeline and leave the cache warm for the
+  next question from the audience.
+
+**Where it sits.** `clients/cache_client.py` follows the same pattern as the other
+clients: a `CacheClient` ABC (`get(subject)` / `set(subject, response)`) with
+`MongoCacheClient` as the concrete implementation, so it is swappable for Redis or a
+dict and mockable in tests. The orchestrator wraps the stages with it; no stage knows
+the cache exists, and no stage logic changed.
+
+**Failure is a miss, never an error.** Every Mongo failure — server down, bad URI,
+a document written before a schema change — logs a warning and degrades to a cache
+miss. The pipeline then runs at full cost, which is the pre-cache behaviour. This is
+why `doctor` reports an unreachable Mongo as `⚠` rather than `✗` and leaves the exit
+code alone: caching costs quota when it's broken, not correctness.
+
+**Intentionally simple.** No versioning, no partial invalidation, no history —
+latest write wins, and freshness is one TTL. The idea doc's §9 lists "exact
+freshness/versioning policy for stored syllabi" as an open question for Phase 2;
+this is the quota shield that makes repeated demo runs survivable, not the storage
+layer that answers it. Notably absent: per-source invalidation (a syllabus is cached
+whole), a "regenerate if sources changed" signal, and any notion of a previous
+version to diff against.
+
 ## Troubleshooting: `doctor`
 
 Before debugging a failing pipeline run, check the configuration:
@@ -269,6 +338,7 @@ listing is informational and never affects the exit code.
 | Model listing | 1 call | How many models the key can see, and whether `GEMINI_MODEL` is among them. **Listed ≠ callable** — `gemini-2.5-flash` is listed but 404s with "no longer available to new users". |
 | Configured-model probe | 1 call | Whether `GEMINI_MODEL` actually answers. Distinguishes 404 (not available to this key), per-minute 429 (recoverable, reports the reset delay), and per-day 429 (will not recover today). |
 | Search provider | 1 call | Whether the Tavily key is accepted. |
+| MongoDB cache | free | Whether the cache server answers a `ping`. Credentials in an Atlas URI are stripped from the output. Reports `⚠` and **never affects the exit code** — a broken cache costs quota, not correctness. |
 | Candidate probes | 1 call each | Only with `--probe-models`. |
 
 ### `--probe-models`
@@ -337,7 +407,7 @@ One line per external call:
 }
 ```
 
-- `call_type` — `llm` | `search`
+- `call_type` — `llm` | `search` | `extraction` | `cache`
 - `stage` — `classifier` | `query_generation` | `source_collection` | `structuring`
   (the merge step is deterministic Python, not an LLM call, so it produces no record —
   it logs its input/output at INFO/DEBUG instead)
@@ -361,7 +431,7 @@ syllabus_agent/
   main.py               FastAPI app — POST /syllabus
   cli.py                 argparse CLI — python -m syllabus_agent.cli "<subject>"
   schemas/               Pydantic models shared between stages
-  clients/                LLM / search / extraction interfaces + stub impls
+  clients/                LLM / search / extraction / cache interfaces + impls
   prompts/                 base.txt (shared output rules) + one .txt per stage, composed by load_prompt()
   pipeline/
     classifier/           stage 1
@@ -369,7 +439,8 @@ syllabus_agent/
     source_collection/       stage 3
     extraction/                stage 4
     structuring/                 stage 5
-    orchestrator.py               runs stages 1-5, short-circuits on routing
+    orchestrator.py               runs stages 1-5, short-circuits on routing,
+                                   wraps the whole run in the result cache
   utils/
     trust_scoring.py       pure heuristic scoring, not behind a client interface
 tests/                    pytest, one file per stage, using fakes from conftest.py
@@ -411,9 +482,15 @@ uvicorn syllabus_agent.main:app --reload        # POST /syllabus {"subject": "..
 python -m syllabus_agent.cli "data structures"  # same pipeline via CLI
 ```
 
+MongoDB is optional — without it the pipeline runs exactly as before, just with no
+[caching](#caching). To get the cache, run a local server (`brew services start
+mongodb-community`, or `docker run -d -p 27017:27017 mongo`) or point `MONGODB_URI`
+at a free Atlas cluster. `cli doctor` tells you which of the two you have.
+
 ## Not built (by design)
 
-- Persistence / caching layer (Phase 2).
+- Syllabus **versioning** and partial invalidation (Phase 2). The result
+  [cache](#caching) is built; a store of record with history is not.
 - Lecture-note / content generation (Phase 3).
 - Frontend (Phase 4).
 

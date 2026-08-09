@@ -8,6 +8,7 @@ from syllabus_agent.config import Settings
 from syllabus_agent.diagnostics import (
     check_env,
     check_model_listing,
+    check_mongodb,
     check_tavily,
     probe_model,
     run_doctor,
@@ -157,6 +158,59 @@ async def test_check_tavily_fails_on_401():
     assert "key rejected" in result.detail
 
 
+# --- mongodb cache ----------------------------------------------------------
+
+
+async def _ok_ping() -> None:
+    return None
+
+
+async def _dead_ping() -> None:
+    raise ConnectionError("connection refused")
+
+
+async def test_check_mongodb_passes_when_the_ping_succeeds():
+    result = await check_mongodb(_settings(), ping=_ok_ping)
+
+    assert result.status == "pass"
+    assert "TTL 30d" in result.detail
+
+
+async def test_check_mongodb_warns_rather_than_fails_when_unreachable():
+    """Caching is an optimisation — an unreachable Mongo costs quota, not
+    correctness, so it must not turn a healthy config into a FAIL.
+    """
+    result = await check_mongodb(_settings(), ping=_dead_ping)
+
+    assert result.status == "warn"
+    assert "cost full quota" in result.detail
+
+
+async def test_check_mongodb_masks_credentials_in_an_atlas_uri():
+    result = await check_mongodb(
+        _settings(mongodb_uri="mongodb+srv://admin:hunter2@cluster0.abcde.mongodb.net"),
+        ping=_dead_ping,
+    )
+
+    assert "hunter2" not in result.detail
+    assert "admin" not in result.detail
+    assert "cluster0.abcde.mongodb.net" in result.detail
+
+
+async def test_unreachable_mongo_does_not_change_the_doctor_exit_code():
+    async def get(url, **kwargs):
+        return _response(200, {"data": [{"id": "models/gemini-3.5-flash"}]})
+
+    exit_code = await run_doctor(
+        _settings(),
+        post=_poster(_response(200, {"results": []})),
+        get=get,
+        ping=_dead_ping,
+    )
+
+    assert exit_code == 0
+
+
 # --- model listing ----------------------------------------------------------
 
 
@@ -181,6 +235,7 @@ async def test_run_doctor_returns_zero_when_everything_healthy():
         _settings(),
         post=_poster(_response(200, {"results": []})),
         get=get,
+        ping=_ok_ping,
     )
 
     assert exit_code == 0
@@ -190,7 +245,9 @@ async def test_run_doctor_returns_one_when_configured_model_is_404():
     async def get(url, **kwargs):
         return _response(200, {"data": []})
 
-    exit_code = await run_doctor(_settings(), post=_poster(_response(404)), get=get)
+    exit_code = await run_doctor(
+        _settings(), post=_poster(_response(404)), get=get, ping=_ok_ping
+    )
 
     assert exit_code == 1
 
@@ -200,7 +257,7 @@ async def test_run_doctor_returns_one_when_env_is_incomplete():
         return _response(200, {"data": []})
 
     exit_code = await run_doctor(
-        _settings(gemini_api_key=""), post=_poster(_response(200)), get=get
+        _settings(gemini_api_key=""), post=_poster(_response(200)), get=get, ping=_ok_ping
     )
 
     assert exit_code == 1

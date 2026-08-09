@@ -19,6 +19,13 @@ class Settings(BaseSettings):
 
     tavily_api_key: str = ""
 
+    # Cache. Local mongod by default; MongoDB Atlas's free M0 tier works fine
+    # here too (paste its mongodb+srv:// string). The cache is an optimisation,
+    # not a store of record — an unreachable Mongo degrades to "no caching".
+    mongodb_uri: str = "mongodb://localhost:27017"
+    mongodb_db: str = "syllabus_agent"
+    cache_ttl_days: int = 30
+
     @property
     def llm_api_key(self) -> str:
         return self.gemini_api_key
