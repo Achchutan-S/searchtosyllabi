@@ -8,5 +8,11 @@ venv/
 .DS_Store
 logs/
 
+# Phase 0 interview transcripts. This repository is public, and these contain a
+# real employer name and specific personal career answers given by the person
+# playing the persona. The experiment's findings live in PIVOT_STATUS.md; the
+# raw transcripts stay local.
+phase0/transcripts/
+
 # IDE / editor artifacts
 .notebook/

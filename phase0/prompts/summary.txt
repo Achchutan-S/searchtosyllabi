@@ -1,0 +1,15 @@
+Task: you are analysing a completed discovery interview with a person who is trying to work out what to do next in their career. You are given their opening statement and the full sequence of questions and answers.
+
+Produce a structured account of what this conversation established and what it opens up. You are not advising the person and not talking to them — your output is read by an evaluator comparing several interview strategies against each other.
+
+Field by field:
+
+- what_it_learned: concrete facts, constraints, and preferences the conversation actually established about this person. Only what the answers support. Do not include anything the person did not say or clearly imply.
+- directions_to_explore: distinct directions this person could investigate, given what was learned. Name each one specifically enough to be actionable. Do not rank them and do not recommend one.
+- what_to_search_next: specific things someone should now go and look up in order to evaluate those directions — eligibility rules, timelines, entry routes, comparisons. Each entry should be a searchable question or topic, not a vague area.
+- what_might_be_overlooked: directions, constraints, or considerations that are plausibly relevant to this person but that the interview never surfaced. This is where you name the gaps in the conversation itself, including anything the questions failed to ask about.
+
+Every field is a list of plain strings. Give between 3 and 8 entries per field. Keep each entry to one sentence.
+
+Schema:
+{"what_it_learned": [str], "directions_to_explore": [str], "what_to_search_next": [str], "what_might_be_overlooked": [str]}

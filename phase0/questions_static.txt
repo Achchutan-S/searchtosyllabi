@@ -1,0 +1,15 @@
+# Arm A — fixed career-preference questionnaire.
+# One question per line. Blank lines and #-comments are ignored.
+# Asked in order, no adaptivity, no model calls during the Q&A phase.
+
+When you picture yourself absorbed in work you enjoy, are you mostly building something, analysing something, helping someone, or organising and coordinating people?
+What kind of day-to-day work environment suits you best — a large established organisation, a small fast-moving team, a research or academic setting, or working largely on your own?
+How much uncertainty can you live with in the next five years — would you rather have a predictable path with a known ceiling, or an uncertain one with a much wider range of outcomes?
+Are you willing to study further, and if so for how long and how intensively — a few months of exam preparation, a two-year postgraduate degree, or a multi-year research programme?
+Do you have a preference between government or public sector work and private sector work, and what is that preference actually based on?
+If you had to choose between job security and higher income over the next decade, which would you protect first?
+How geographically flexible are you — could you move to another city, another state, or another country, and are there constraints that decide this for you?
+Over the long run, do you see yourself going deeper technically as a specialist, or moving toward managing people, projects and budgets?
+How much time pressure are you under to start earning — do you need income within months, or do you have a year or more of runway?
+Which parts of your degree did you genuinely enjoy, as opposed to the parts you were simply good at?
+What would make you look back in ten years and feel the decision you made now was the right one?
