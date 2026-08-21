@@ -20,6 +20,20 @@ This is **layer one only** — the search-and-structure half. Content/lecture-no
 generation and persistence were designed for but never built; see
 [Phase status](#phase-status).
 
+## Snapshot
+
+| | |
+|---|---|
+| **What it is** | A 6-stage async pipeline (classify → query → collect → extract → relevance → structure+merge) behind a CLI and a one-endpoint FastAPI app |
+| **Language / runtime** | Python 3.11+ (developed on 3.12), `asyncio` throughout |
+| **Stack** | FastAPI + uvicorn, Pydantic v2 + pydantic-settings, httpx, BeautifulSoup, PyMuPDF, pytesseract + Pillow, motor (MongoDB), pytest + pytest-asyncio |
+| **External services** | An OpenAI-compatible LLM endpoint (Gemini by default), Tavily search, and optionally MongoDB for the result cache. Tesseract is a system binary |
+| **Entry points** | `python -m syllabus_agent.cli "<subject>"`, `python -m syllabus_agent.cli doctor`, `uvicorn syllabus_agent.main:app` |
+| **Tests** | 101 passing; live-API tests skip themselves without keys |
+| **Config** | `.env` only — 7 settings, all with defaults except the two API keys ([`.env.example`](.env.example)) |
+| **Output** | One `PipelineResult` envelope for every route, with full provenance: per-source structures, the blended ranking table, and per-topic source URLs |
+| **State of play** | Feature-complete for layer one, archived rather than maintained. Last verified end-to-end 2026-08-09 (see [AUDIT.md](AUDIT.md)) |
+
 ## Current State & Known Issues
 
 **This section is the single source of truth for what works today.** Full
@@ -44,6 +58,7 @@ anywhere in the codebase.** Verified by live runs, not assumed:
 | **Trust ranking** | Blends domain reputation with a local content-richness heuristic; demoted MIT OCW admin pages from the top 4 to ranks 10–21 |
 | **Structuring** | Extracts each source's own structure — one run yielded 27, 1, 4 and 5 units from four sources, no shape imposed |
 | **Semantic merge** | Single LLM call grouping topics by meaning with per-topic provenance; visibly excludes off-topic material in its `merge_notes` |
+| **Result cache** | Real MongoDB read/write in front of the pipeline; a repeat subject is served in milliseconds with zero LLM calls, and an unreachable Mongo degrades to a miss rather than an error |
 | **`doctor` diagnostics** | Distinguishes 404 / per-minute 429 / per-day 429; scriptable exit codes |
 | **Observability** | Per-run JSONL trace of every external call, with API keys redacted (verified: zero occurrences) |
 | **Provider swappability** | Swapped across four Gemini models with zero code changes — `.env` only |
@@ -55,7 +70,8 @@ anywhere in the codebase.** Verified by live runs, not assumed:
   units contaminated with other courses. The relevance filter and semantic merge
   fixed the contamination, but topic coverage still varies run to run with which
   sources the search happens to surface.
-- **Free-tier economics don't work.** ~50 LLM calls per run against a ~20/day
+- **Free-tier economics don't work.** ~40–50 LLM calls per run (42 in the
+  [captured run](#what-a-run-actually-costs), most of them relevance) against a ~20/day
   per-model cap is 2–3 runs per day. Three models were exhausted in one working
   session. The original "free education for everyone" goal needs caching or a
   more generous provider.
@@ -73,7 +89,7 @@ anywhere in the codebase.** Verified by live runs, not assumed:
 
 ### Phase status
 
-Against the original five-phase plan (`syllabus-agent-idea-doc.md`):
+Against the original five-phase plan ([`syllabus-agent-idea-doc.md`](syllabus-agent-idea-doc.md)):
 
 | Phase | Scope | Status |
 |---|---|---|
@@ -125,6 +141,12 @@ subject
 
 `syllabus_agent/pipeline/orchestrator.py` runs these in order and short-circuits
 right after classification for any route other than `genuine_academic_subject`.
+It owns the two pieces of glue that don't belong to any stage: the result
+[cache](#caching) wraps the whole run (so a hit returns before stage 1), and
+`apply_relevance_filter()` translates stage 5's verdicts into a filtered
+`ExtractionResult` — dropping `field_level`/`unrelated` blocks and stamping
+`relevance_penalty` on what remains — so stage 6 stays unaware that relevance
+exists.
 
 ### Why classification routes to four outcomes
 
@@ -175,9 +197,45 @@ There are no stubs left anywhere in the pipeline.
 - **`pre_extracted_content` fast path**: used only when the search provider's text is at least `MIN_PRE_EXTRACTED_CHARS` (2,000). Measured live, Tavily's `content` is a search *snippet* — median 918 chars, ceiling ~1,500, versus ~37k for a fetched PDF. Accepting it would trade the syllabus body for a blurb, so below the threshold the page is fetched properly. In practice this means the fast path rarely fires with Tavily; it exists for providers that return real page text.
 
 There are no silent fallbacks left. If the LLM returns unparseable JSON, the
-stage logs the raw response and r
-aises — a wrong default here would send a
+stage logs the raw response and raises — a wrong default here would send a
 subject down the full pipeline and hide the real cause.
+
+### The relevance filter answers a question scoring can't
+
+`pipeline/relevance/assess.py` runs between extraction and structuring and asks
+one thing per source: *is this document about **this course**, or about the whole
+field?* Neither domain reputation nor content richness can tell the difference — a
+university's full CS degree catalog is `.edu`, long, densely sectioned and
+credit-bearing, so it outranked real syllabi and produced a "data structures"
+syllabus containing units named "Introduction to Robotics" and "Web Development".
+
+| Aspect | Behaviour |
+|---|---|
+| Cost | One LLM call per extracted source (the dominant term — see [What a run actually costs](#what-a-run-actually-costs)) |
+| Input size | First `MAX_TEXT_CHARS` (3,000) of the extracted text — enough for title, headers and first unit without paying for a 40k-char PDF body |
+| Concurrency | `asyncio.gather` behind a `Semaphore(MAX_CONCURRENT_ASSESSMENTS)` = 4 |
+| Optional cap | `MAX_SOURCES_TO_ASSESS` (currently `None` — assess everything) |
+
+Four verdicts (`RelevanceVerdict`), of which two survive:
+
+| Verdict | Meaning | Effect |
+|---|---|---|
+| `direct_match` | A syllabus/outline for exactly this course | Kept, no penalty |
+| `partial_match` | Contains a section about this course among other things | Kept, demoted ×`PARTIAL_MATCH_TRUST_MULTIPLIER` (0.7) |
+| `field_level` | The broader field, or a related but different course | Dropped |
+| `unrelated` | Not about this subject at all | Dropped |
+
+**The demotion is kept separate from trust, deliberately.** A partial match is
+recorded on `RawTextBlock.relevance_penalty` (via `relevance_multiplier()`) and
+multiplied into the blended score **for ranking and selection only** — the trust
+score handed to the merge prompt stays unpenalised. Folding the two together meant
+no partial-match source could ever clear the merge prompt's `trust >= 0.7`
+single-source threshold, so its topics were silently dropped. `SourceRanking`
+carries both numbers so the blend can be audited.
+
+**If nothing survives, the run errors rather than inventing a syllabus.** Zero
+surviving sources returns a `PipelineResult` with `stage_reached=relevance` and an
+explanatory `error`, never an empty `CanonicalSyllabus`.
 
 ### Trust ranking uses two signals, not one
 
@@ -228,14 +286,42 @@ the **top 3-4 ranked syllabi**, not from every source that survives filtering.
 `TOP_N_SOURCES_TO_STRUCTURE` (currently 4) *before* making any LLM call.
 
 Sources below the cutoff aren't silently dropped — they're reported on
-`CanonicalSyllabus.collected_not_structured`, separate from
-`contributing_sources` (the ones actually structured and merged), so you can
-audit what the pipeline saw versus what it used.
+`CanonicalSyllabus.collected_not_structured`, separate from `source_urls` /
+`per_source_structures` (the ones actually structured and merged), so you can
+audit what the pipeline saw versus what it used. `source_ranking` carries the
+whole table either way, with a `structured` flag per row.
 
 A secondary benefit is cost/quota: a real run collects ~38 sources, so
-structuring all of them meant ~38 LLM calls and a guaranteed HTTP 429. Capped, a
-run costs `1 (classify) + 1 (query generation) + N (structuring)` = **6 calls at
-N=4** in the happy path, plus one extra per retry.
+structuring all of them meant ~38 LLM calls and a guaranteed HTTP 429.
+
+### What a run actually costs
+
+The cap above bounds *structuring*, not the run. Relevance assessment is one LLM
+call per extracted source, and that term now dominates:
+
+```
+1 (classify) + 1 (query generation) + S (relevance, one per extracted source)
+             + N (structuring, N=4) + 1 (merge)
+```
+
+The captured run in [`docs/example-run/`](docs/example-run/index.html) is the
+reference figure — **80 trace records** for "data structures":
+
+| Stage | Records | Call type |
+|---|---|---|
+| `classifier` | 1 | `llm` |
+| `query_generation` | 1 | `llm` |
+| `source_collection` | 6 | `search` (one per generated query) |
+| `extraction` | 32 | `extraction` (HTTP fetches) |
+| `relevance` | 35 | `llm` (30 sources + 5 retries) |
+| `structuring` | 4 | `llm` |
+| `merge` | 1 | `llm` |
+
+That is **42 LLM calls**, which is where the "~50 calls per run" figure in
+[What doesn't work well](#what-doesnt-work-well) comes from — and why a 20/day
+per-model free tier yields 2–3 runs. `MAX_SOURCES_TO_ASSESS` in
+`pipeline/relevance/assess.py` exists to cap the relevance term (currently
+`None`, i.e. uncapped); the [cache](#caching) is the other half of the answer.
 
 ### Free-tier quota notes
 
@@ -243,7 +329,9 @@ Gemini enforces two separate free-tier caps, both surfaced as HTTP 429, and the
 model you pick matters enormously:
 
 - **Per-minute** (`GenerateRequestsPerMinutePerProjectPerModel-FreeTier`) — ~5/min. A
-  6-call run trips this once; the client reads the provider's `Retry-After` and waits.
+  ~42-call run trips this repeatedly, mostly during the relevance fan-out; the client
+  reads the provider's `Retry-After` and waits. `MAX_CONCURRENT_ASSESSMENTS` is held at
+  4 for the same reason — a wider fan-out converts into 429s and backoff, not speed.
 - **Per-day** (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`) — this is the one
   that bites. `gemini-3.6-flash` allows only **20 requests/day**, i.e. ~3 pipeline
   runs. The client raises `DailyQuotaExhausted` immediately rather than retrying,
@@ -408,10 +496,17 @@ One line per external call:
 ```
 
 - `call_type` — `llm` | `search` | `extraction` | `cache`
-- `stage` — `classifier` | `query_generation` | `source_collection` | `structuring`
-  (the merge step is deterministic Python, not an LLM call, so it produces no record —
-  it logs its input/output at INFO/DEBUG instead)
+- `stage` — `classifier` | `query_generation` | `source_collection` | `extraction` |
+  `relevance` | `structuring` | `merge` (`unknown` if a call somehow escapes a
+  `stage_context()` block). The merge is an LLM call and traces like any other; the
+  `apply_relevance_filter` step between relevance and structuring is pure Python and
+  produces no record, logging its keep/drop counts at INFO instead.
 - `status` — `success` | `http_error` | `parse_error` | `rate_limited`
+
+The stage label is carried on a `contextvars.ContextVar` set by each stage
+(`stage_context()` in `logging_setup.py`), so the clients stay unaware of where in
+the pipeline they are being called from — which is what lets the relevance stage
+fan out concurrently and still have each of its calls labelled correctly.
 
 Retries appear as separate lines with the same stage and an incremented `attempt`,
 so a parse failure followed by a successful retry is two records.
@@ -421,29 +516,74 @@ so a parse failure followed by a successful retry is two records.
 error strings. Tavily sends its key in the JSON body rather than a header; that is
 redacted too. `logs/` is gitignored.
 
+## Security posture
+
+Full detail and the audit trail are in [AUDIT.md](AUDIT.md); the short version:
+
+- **SSRF guard on extraction.** Extraction fetches URLs handed to it by an external
+  search API, which makes it an SSRF sink. `assert_safe_url()` allows http(s) only,
+  resolves the host, and rejects private, loopback, link-local, reserved, multicast
+  and unspecified addresses. Redirects are followed **manually**, max 5 hops, with
+  every hop re-checked — auto-follow would let a public URL bounce straight to an
+  internal one. Known limitation: this does not close the DNS-rebinding (TOCTOU)
+  window between check and connect.
+- **Secrets never reach disk or the console.** Keys are redacted by field name and
+  by scrubbing their literal values (`register_secret()`), `doctor` masks them for
+  display, and `.env` plus `logs/` are gitignored. Verified: zero key occurrences
+  across all captured traces and console logs. Caveat: `redact()` runs inside
+  `record_call()`, so it covers the JSONL trace, not arbitrary future log lines.
+- **Generic 500s.** The FastAPI exception handler returns a fixed `detail` string
+  and logs the traceback server-side, so provider responses and request context
+  never leave the process.
+- **No hardcoded secrets** anywhere in the tracked tree — only key-shaped fixtures
+  in `test_diagnostics.py`.
+
 ## Layout
 
 ```
 syllabus_agent/
-  config.py            pydantic-settings Settings, reads .env
-  diagnostics.py        `doctor` checks — env, model listing, probes, quota triage
-  logging_setup.py      console/file logging, per-call JSONL tracing, key redaction
+  config.py             pydantic-settings Settings, reads .env (provider-agnostic field names)
+  diagnostics.py        `doctor` checks — env, model listing, probes, quota triage, Mongo ping
+  logging_setup.py      console/file logging, per-call JSONL tracing, stage context, key redaction
   main.py               FastAPI app — POST /syllabus
-  cli.py                 argparse CLI — python -m syllabus_agent.cli "<subject>"
-  schemas/               Pydantic models shared between stages
-  clients/                LLM / search / extraction / cache interfaces + impls
-  prompts/                 base.txt (shared output rules) + one .txt per stage, composed by load_prompt()
+  cli.py                argparse CLI — python -m syllabus_agent.cli "<subject>" | doctor
+  schemas/              Pydantic models shared between stages
+    enums.py              RouteDecision, SourceFormat, ExtractionMethod,
+                          RelevanceVerdict, PipelineStage
+    classification.py     ClassificationResult
+    query.py              SearchQuery, QueryGenerationResult
+    source.py             CandidateSource, SourceCollectionResult
+    extraction.py         RawTextBlock, ExtractionFailure, ExtractedSource, ExtractionResult
+    relevance.py          RelevanceResult
+    syllabus.py           SourceUnit, PerSourceStructure, SourceRanking,
+                          MergedTopic, MergedUnit, CanonicalSyllabus
+    pipeline.py           PipelineResult — the response envelope for every route
+  clients/              everything that talks to the outside world, behind ABCs
+    llm_client.py         LLMClient ABC + OpenAICompatibleLLMClient
+    search_client.py      SearchClient ABC + TavilySearchClient
+    cache_client.py       CacheClient ABC + MongoCacheClient
+    extraction_client.py  HtmlExtractor / PdfTextExtractor / PdfOcrExtractor, detect_format()
+  prompts/              base.txt (shared output rules) + classifier / query_generation /
+                        relevance / structuring / merge .txt, composed by load_prompt()
   pipeline/
-    classifier/           stage 1
-    query_generation/       stage 2
-    source_collection/       stage 3
-    extraction/                stage 4
-    structuring/                 stage 5
-    orchestrator.py               runs stages 1-5, short-circuits on routing,
-                                   wraps the whole run in the result cache
+    classifier/           stage 1  classify_subject()
+    query_generation/     stage 2  generate_queries()
+    source_collection/    stage 3  collect_sources()
+    extraction/           stage 4  extract_sources()
+    relevance/            stage 5  assess_relevance()
+    structuring/          stage 6  structure_per_source() + semantic_merge()
+    orchestrator.py       runs stages 1-6 + merge, short-circuits on routing,
+                          applies the relevance filter, wraps the run in the result cache
   utils/
-    trust_scoring.py       pure heuristic scoring, not behind a client interface
-tests/                    pytest, one file per stage, using fakes from conftest.py
+    trust_scoring.py    pure heuristic scoring (domain, content richness, blend,
+                        relevance multiplier) — not behind a client interface
+tests/                  pytest, one file per stage plus cache/logging/diagnostics/trust,
+                        using fakes from conftest.py; *_live.py hit real APIs and
+                        skip themselves when the corresponding key is unset
+docs/example-run/       one complete captured run, rendered as a static HTML report
+AUDIT.md                pre-archive audit: security fixes, dead code removed, open issues
+syllabus-agent-idea-doc.md   the original five-phase design doc this is measured against
+setup.sh                venv + deps + .env + test run in one `source setup.sh`
 ```
 
 ## See a real run
@@ -465,27 +605,105 @@ The raw evidence sits alongside it, unedited:
 | [`full_response.json`](docs/example-run/full_response.json) | The complete pipeline response, including per-source structures captured before merging |
 | [`trace.jsonl`](docs/example-run/trace.jsonl) | Every external call in that run — 80 records with request, response, status and duration. API keys redacted by the logging layer |
 | [`doctor_output.txt`](docs/example-run/doctor_output.txt) | A healthy `cli doctor` pre-flight check from the same session |
+| [`build_report.py`](docs/example-run/build_report.py) | The generator that renders `index.html` from the two files above — the report is derived, not hand-written |
 
 Re-running the pipeline will produce different results — the sources depend on what
 the search API surfaces that day.
 
 ## Running it
 
+Python **3.11+** (developed and tested on 3.12; the code uses `X | None`
+annotations throughout). `source setup.sh` does the whole block below in one go —
+it creates the venv, installs, copies `.env.example` to `.env` if absent, and runs
+the tests. Manually:
+
 ```bash
-python3.11 -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate     # 3.11+
 pip install -r requirements.txt
 cp .env.example .env   # then add real GEMINI_API_KEY and TAVILY_API_KEY
                        # (all clients are live; run `cli doctor` to verify)
 
-pytest                                          # unit tests, mocked clients
+python -m syllabus_agent.cli doctor             # pre-flight: keys, model, search, cache
+pytest                                          # 101 tests
 uvicorn syllabus_agent.main:app --reload        # POST /syllabus {"subject": "..."}
 python -m syllabus_agent.cli "data structures"  # same pipeline via CLI
 ```
+
+**Tesseract** is a system binary, not a pip package — without it the OCR fallback
+for scanned PDFs fails per-source (recorded on `ExtractionResult.failures`) rather
+than aborting the run. `brew install tesseract` on macOS.
 
 MongoDB is optional — without it the pipeline runs exactly as before, just with no
 [caching](#caching). To get the cache, run a local server (`brew services start
 mongodb-community`, or `docker run -d -p 27017:27017 mongo`) or point `MONGODB_URI`
 at a free Atlas cluster. `cli doctor` tells you which of the two you have.
+
+### Configuration
+
+Everything is read from `.env` by `config.py` (pydantic-settings, `extra="ignore"`).
+The full set:
+
+| Setting | Default | Purpose |
+|---|---|---|
+| `GEMINI_API_KEY` | — | **Required.** Key for the LLM endpoint |
+| `GEMINI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai` | Any OpenAI-compatible base; `doctor` warns if the path isn't `/openai`-shaped |
+| `GEMINI_MODEL` | `gemini-3.6-flash` | Quotas are per-model, so this is also the quota dial |
+| `TAVILY_API_KEY` | — | **Required.** Key for search |
+| `MONGODB_URI` | `mongodb://localhost:27017` | Result cache; a local `mongod` or a free Atlas `mongodb+srv://` string |
+| `MONGODB_DB` | `syllabus_agent` | Collection is always `syllabus_cache` |
+| `CACHE_TTL_DAYS` | `30` | `0` disables caching |
+| `LOG_LEVEL` | `INFO` | Env var, not a `Settings` field. `DEBUG` is equivalent to `--verbose` |
+
+The field names are deliberately provider-agnostic *inside* the code — `Settings`
+exposes `llm_api_key` / `llm_base_url` / `llm_model` properties, so nothing
+downstream mentions Gemini and swapping providers stays a `.env` change. (The env
+var names still carry the `GEMINI_` prefix; renaming them was left alone rather
+than breaking existing `.env` files.)
+
+Missing or placeholder keys produce a loud stderr warning at startup
+(`warn_on_missing_keys`) instead of an opaque 401 mid-run.
+
+### Tests
+
+`pytest` runs **101 tests** — one file per stage plus `test_cache.py`,
+`test_logging_setup.py`, `test_diagnostics.py` and `test_trust_scoring.py`, all
+against the fakes in `conftest.py`. `asyncio_mode = auto` is set in `pytest.ini`,
+so async tests need no decorator.
+
+`test_llm_client_live.py` and `test_search_client_live.py` hit the real providers
+and **skip themselves** when `GEMINI_API_KEY` / `TAVILY_API_KEY` are unset, so a
+clone with no keys still runs green. With keys present they cost a handful of
+calls against the daily quota — worth knowing before running `pytest` on a day you
+need the quota for a demo.
+
+### The API
+
+One endpoint, plus FastAPI's own `/docs` (Swagger UI) and `/openapi.json`:
+
+```bash
+curl -X POST localhost:8000/syllabus \
+  -H 'Content-Type: application/json' \
+  -d '{"subject": "data structures"}'
+```
+
+Request: `{"subject": str, "force_refresh": bool = false}` — `force_refresh` is
+also accepted as a `?force_refresh=true` query param. Response: a `PipelineResult`
+on every route, so a caller parses one shape regardless of what happened:
+
+| Field | Meaning |
+|---|---|
+| `subject` | Echoed back as sent |
+| `route` | The classifier's verdict — one of the four `RouteDecision` values |
+| `classification` | Full `ClassificationResult`, including the model's reasoning and any `clarifying_question` |
+| `stage_reached` | `classification` \| `relevance` \| `structuring` — how far the run got |
+| `syllabus` | The `CanonicalSyllabus`, or `null` on any non-`genuine_academic_subject` route or error |
+| `error` | Set when a stage ended the run deliberately (e.g. nothing survived relevance filtering) |
+| `generated_at` | UTC timestamp, on every route — this is what the cache TTL is measured against |
+| `from_cache` | `true` only when served from cache without running a stage; never stored as `true` |
+
+Unhandled exceptions return a generic `500 {"detail": ...}` with the traceback kept
+server-side — pipeline errors can carry provider responses and request context, so
+they are logged, not serialised into the response.
 
 ## Not built (by design)
 

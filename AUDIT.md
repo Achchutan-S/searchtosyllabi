@@ -13,8 +13,7 @@ behaviour changed except the security fixes listed below.
 
 > **Updated 2026-08-09 (follow-up pass).** Two items in "Out-of-scope issues"
 > have changed status: the merge coverage bug is **fixed**, and the JSONL trace
-> corruption finding is **
- as incorrect** — see items 2 and 3.
+> corruption finding is **withdrawn as incorrect** — see items 2 and 3.
 
 ---
 
